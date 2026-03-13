@@ -1,4 +1,4 @@
-﻿const { Client, GatewayIntentBits, EmbedBuilder } = require("discord.js");
+const { Client, GatewayIntentBits, EmbedBuilder } = require("discord.js");
 const fs = require("fs");
 require("dotenv").config();
 
@@ -37,6 +37,11 @@ client.once("ready", () => {
   console.log(`Logged in as ${client.user.tag}`);
 });
 
+// ★ 全角→半角（！→!）
+function normalize(str) {
+  return str.replace(/[！]/g, "!");
+}
+
 // 抽選ID生成
 function generateLotteryId() {
   const now = new Date();
@@ -73,9 +78,8 @@ async function runLottery(msg, messageId, prizes) {
   const lotteryId = generateLotteryId();
   const dateString = getDateString();
 
-  // ★ かわいい抽選発表デザイン
   const embed = new EmbedBuilder()
-    .setColor("#FFB7C5") // かわいいピンク
+    .setColor("#FFB7C5")
     .setDescription(
       "──────────\n" +
       "　　本日の抽選結果です\n" +
@@ -84,7 +88,6 @@ async function runLottery(msg, messageId, prizes) {
     )
     .setTimestamp();
 
-  // ★ ログ（抽選IDと日付はログにのみ残す）
   let logText = `抽選ID: ${lotteryId}\n日付: ${dateString}\n`;
 
   for (let i = 0; i < prizes.length; i++) {
@@ -140,29 +143,28 @@ async function runLottery(msg, messageId, prizes) {
     logText += `${prize.name}, ${winnerNamesForLog.join(", ")}\n`;
   }
 
-  // ★ ログ送信先
   const logChannel = settings.logChannelId
     ? msg.guild.channels.cache.get(settings.logChannelId)
     : msg.channel;
 
-  // ★ ログ送信（リンク取得のため await）
   const logMessage = await logChannel.send("```\n" + logText + "```");
 
-  // ★ Embed の一番下にログへのリンクを追加
   embed.addFields({
     name: "──────────\n　ログはこちら",
     value: `${logMessage.url}\n──────────`
   });
 
-  // ★ Embed を返信
   msg.reply({ embeds: [embed] });
 }
 
 client.on("messageCreate", async (msg) => {
   if (msg.author.bot) return;
 
+  // ★ 全角→半角統一
+  const content = normalize(msg.content);
+
   // 抽選準備チャンネル設定
-  if (msg.content === "!抽選チャンネル設定") {
+  if (content === "!抽選チャンネル設定") {
     settings.lotteryChannelId = msg.channel.id;
     saveSettings();
     msg.reply("このチャンネルを抽選準備チャンネルに設定しました。");
@@ -170,15 +172,15 @@ client.on("messageCreate", async (msg) => {
   }
 
   // ログチャンネル設定
-  if (msg.content === "!抽選ログチャンネル設定") {
+  if (content === "!抽選ログチャンネル設定") {
     settings.logChannelId = msg.channel.id;
     saveSettings();
     msg.reply("このチャンネルを抽選ログチャンネルに設定しました。");
     return;
   }
 
-  // ヘルプコマンド（かわいい版）
-  if (msg.content === "!抽選ヘルプ") {
+  // ヘルプ
+  if (content === "!抽選ヘルプ") {
     const helpEmbed = new EmbedBuilder()
       .setTitle("抽選Botの使い方")
       .setColor("#FFB7C5")
@@ -200,15 +202,12 @@ client.on("messageCreate", async (msg) => {
     return;
   }
 
-  // 抽選準備チャンネルが未設定なら無視
   if (!settings.lotteryChannelId) return;
-
-  // 抽選準備チャンネル以外は無視
   if (msg.channel.id !== settings.lotteryChannelId) return;
 
-  // 即抽選方式
-  if (msg.content.startsWith("!抽選 ")) {
-    const args = msg.content.split(" ").slice(1);
+  // 即抽選
+  if (content.startsWith("!抽選 ")) {
+    const args = content.split(" ").slice(1);
 
     if (args.length < 2) {
       msg.reply("使い方: `!抽選 <メッセージID> 商品名:人数 商品名:人数 ...`");
