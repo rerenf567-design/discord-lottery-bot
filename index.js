@@ -231,5 +231,5 @@ client.on("messageCreate", async (msg) => {
     return;
   }
 });
-
+console.log("TOKEN length:", TOKEN?.length);
 client.login(TOKEN);
