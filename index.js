@@ -2,7 +2,17 @@ const { Client, GatewayIntentBits, EmbedBuilder } = require("discord.js");
 const fs = require("fs");
 require("dotenv").config();
 
+// ★ Railway でも確実に動くように TOKEN チェック
 const TOKEN = process.env.DISCORD_BOT_TOKEN;
+if (!TOKEN) {
+  console.error("? DISCORD_BOT_TOKEN が設定されていません（Railway Variables を確認してください）");
+  process.exit(1);
+}
+
+// ★ 全角→半角（！→!）
+function normalize(str) {
+  return str.replace(/[！]/g, "!");
+}
 
 // 設定ファイル読み込み
 let settings = {
@@ -36,11 +46,6 @@ const client = new Client({
 client.once("ready", () => {
   console.log(`Logged in as ${client.user.tag}`);
 });
-
-// ★ 全角→半角（！→!）
-function normalize(str) {
-  return str.replace(/[！]/g, "!");
-}
 
 // 抽選ID生成
 function generateLotteryId() {
