@@ -1,11 +1,10 @@
 const { Client, GatewayIntentBits, EmbedBuilder } = require("discord.js");
-const fs = require("fs");
 require("dotenv").config();
 
-// ★ Railway でも確実に動くように TOKEN チェック
+// ★ TOKEN チェック
 const TOKEN = process.env.DISCORD_BOT_TOKEN;
 if (!TOKEN) {
-  console.error("? DISCORD_BOT_TOKEN が設定されていません（Railway Variables を確認してください）");
+  console.error("❌ DISCORD_BOT_TOKEN が設定されていません");
   process.exit(1);
 }
 
@@ -14,24 +13,16 @@ function normalize(str) {
   return str.replace(/[！]/g, "!");
 }
 
-// 設定ファイル読み込み
+// ★ ENV から設定を読み込む
 let settings = {
-  lotteryChannelId: null,
-  logChannelId: null
+  lotteryChannelId: process.env.LOTTERY_CHANNEL_ID || null,
+  logChannelId: process.env.LOG_CHANNEL_ID || null
 };
 
-const SETTINGS_FILE = "./settings.json";
-
-// 設定ファイル読み込み（存在しなければ作成）
-if (fs.existsSync(SETTINGS_FILE)) {
-  settings = JSON.parse(fs.readFileSync(SETTINGS_FILE, "utf8"));
-} else {
-  fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
-}
-
-// 設定保存関数
-function saveSettings() {
-  fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+// ★ ENV に保存する関数（Render API で更新する想定）
+async function saveSettingToEnv(key, value) {
+  console.log(`ENV 更新: ${key} = ${value}`);
+  // Render API で更新する方式に後で差し替え可能
 }
 
 const client = new Client({
@@ -165,13 +156,12 @@ async function runLottery(msg, messageId, prizes) {
 client.on("messageCreate", async (msg) => {
   if (msg.author.bot) return;
 
-  // ★ 全角→半角統一
   const content = normalize(msg.content);
 
   // 抽選準備チャンネル設定
   if (content === "!抽選チャンネル設定") {
     settings.lotteryChannelId = msg.channel.id;
-    saveSettings();
+    await saveSettingToEnv("LOTTERY_CHANNEL_ID", msg.channel.id);
     msg.reply("このチャンネルを抽選準備チャンネルに設定しました。");
     return;
   }
@@ -179,7 +169,7 @@ client.on("messageCreate", async (msg) => {
   // ログチャンネル設定
   if (content === "!抽選ログチャンネル設定") {
     settings.logChannelId = msg.channel.id;
-    saveSettings();
+    await saveSettingToEnv("LOG_CHANNEL_ID", msg.channel.id);
     msg.reply("このチャンネルを抽選ログチャンネルに設定しました。");
     return;
   }
@@ -231,5 +221,6 @@ client.on("messageCreate", async (msg) => {
     return;
   }
 });
+
 console.log("TOKEN length:", TOKEN?.length);
 client.login(TOKEN);
